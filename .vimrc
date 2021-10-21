@@ -17,7 +17,14 @@ Plugin 'VundleVim/Vundle.vim'
 " plugin on GitHub repo
 "Plugin 'tpope/vim-fugitive'
 
+
+Plugin 'vim-airline/vim-airline'
+
 Plugin 'scrooloose/nerdtree'
+
+Plugin 'wesleyche/srcexpl'
+
+Plugin 'taglist.vim'
 
 " All of your Plugins must be added before the following line
 call vundle#end()            " required
@@ -35,23 +42,48 @@ filetype plugin indent on    " required
 " Put your non-Plugin stuff after this line
 
 
-" JW
-"line numbed
+" line number
 set nu
-"highlight search
+" highlight search
 set hlsearch
 
-" map <key> :<cmd>
-" nmap: normal mode
-map <F9> :NERDTreeToggle<CR>
-
+" tabs
 set smartindent
-set expandtab
+set expandtab "tab to space
 set tabstop=2
 set shiftwidth=2
 
-"
+if has ("cscope")
+  if filereadable("cscope.out")
+    cs add cscope.out
+  endif
+  set cscopeverbose
+endif
+
+" map <key> :<cmd>
+" nnoremap: normal non-recursive map
+
+""""""""""""""""""""""""""""
+" nerdtree
+map <F5> :NERDTreeFind<CR>
+map <F6> :NERDTreeToggle<CR>
+let g:NERDTreeHighlightCursorline = 1
+
+""""""""""""""""""""""""""""
+" SrcExpl
+" // The switch of the Source Explorer 
+nmap <F7> :SrcExplToggle<CR> 
+
+" // Do not let the Source Explorer update the tags file when opening 
+let g:SrcExpl_isUpdateTags = 0 
+
+""""""""""""""""""""""""""""
+" taglist
+map <F8> :TlistToggle<CR>
+let Tlist_Use_Right_Window = 1 
+
+""""""""""""""""""""""""""""
 " $ find `pwd` -name "*.c" -o -name "*.cpp" -o -name "*.h" -o -name "*.hpp" > cscope.files
 " $ cscope -q -R -b -i cscope.files
-" $ ctags -R ./*
+" $ ctags -R
 
