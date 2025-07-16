@@ -88,3 +88,10 @@ let Tlist_Use_Right_Window = 1
 " $ cscope -q -R -b -i cscope.files
 " $ ctags -R
 
+" Ctrl + ← 단어 왼쪽으로 이동
+nnoremap <Esc>[1;5D b
+inoremap <Esc>[1;5D <C-o>b
+
+" Ctrl + → 단어 오른쪽으로 이동
+nnoremap <Esc>[1;5C w
+inoremap <Esc>[1;5C <C-o>w
