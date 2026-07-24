@@ -1,0 +1,17 @@
+[Unit]
+Description=Claude Code remote-control (claude rc) in a tmux session on the default socket
+
+[Service]
+# Just ensure the session exists on the default tmux socket; the tmux window
+# runs a while-loop that respawns claude rc on crash, so systemd does not need
+# to track the process. KillMode=none + a targeted ExecStop mean stopping this
+# unit only kills the claude-rc session, never the user's other tmux sessions.
+Type=oneshot
+RemainAfterExit=yes
+KillMode=none
+WorkingDirectory=/home/jungwook/TAPER
+ExecStart=/home/jungwook/.local/bin/start-claude-rc.sh
+ExecStop=/usr/bin/tmux kill-session -t claude-rc
+
+[Install]
+WantedBy=default.target
