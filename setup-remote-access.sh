@@ -6,11 +6,22 @@
 #   vscode-tunnel  `code tunnel`  -> reach this box at vscode.dev/tunnel/<host>
 #
 # Usage:  ./setup-remote-access.sh [--check] [--no-tunnel] [--no-claude-rc]
-#                                 [--no-download] [--name NAME]
+#                                 [--no-download] [--name NAME] [--workdir DIR]
 #
 #   --check         report what would happen and what is missing; change nothing
 #   --no-download   do not fetch the VS Code CLI when it is absent
 #   --name NAME     tunnel machine name (default: this host's short name)
+#   --workdir DIR   directory new claude rc sessions start in (default: ~/TAPER
+#                   if it exists, else $HOME)
+#
+# Settings can equivalently come from the environment, which is usually the
+# terser way to say it:
+#
+#   CLAUDE_RC_WORKDIR=~/TAPER TUNNEL_NAME=box1 ./setup-remote-access.sh
+#
+# Anything given that way is STORED in the env file, because a systemd user unit
+# does not inherit your shell environment -- at boot the launcher would never see
+# it otherwise. Precedence: command line > environment > stored file > default.
 #
 # Safe to re-run: every step is idempotent, and it never restarts anything that
 # would drop a live tmux session.
@@ -24,19 +35,31 @@ UNIT_DIR="$HOME/.config/systemd/user"
 SCRIPTS=(tmux-server-up.sh start-claude-rc.sh start-vscode-tunnel.sh)
 UNITS=(tmux-server.service claude-rc.service vscode-tunnel.service)
 
-CHECK_ONLY=0 WANT_TUNNEL=1 WANT_RC=1 ALLOW_DOWNLOAD=1 NAME_OVERRIDE=""
+# Grab anything the environment supplied BEFORE ra_load_env sources the stored
+# file, which would otherwise clobber it. Empty means "not specified".
+ENV_TUNNEL_NAME="${TUNNEL_NAME:-}"
+ENV_RC_WORKDIR="${CLAUDE_RC_WORKDIR:-}"
+ENV_CLAUDE_BIN="${CLAUDE_BIN:-}"
+ENV_CODE_BIN="${CODE_BIN:-}"
+
+CHECK_ONLY=0 WANT_TUNNEL=1 WANT_RC=1 ALLOW_DOWNLOAD=1
 while [ $# -gt 0 ]; do
   case "$1" in
     --check|--dry-run) CHECK_ONLY=1 ;;
     --no-tunnel)       WANT_TUNNEL=0 ;;
     --no-claude-rc)    WANT_RC=0 ;;
     --no-download)     ALLOW_DOWNLOAD=0 ;;
-    --name)            NAME_OVERRIDE="${2:-}"; shift ;;
-    -h|--help)         sed -n '2,20p' "$0"; exit 0 ;;
+    --name)            ENV_TUNNEL_NAME="${2:-}"; shift ;;
+    --workdir)         ENV_RC_WORKDIR="${2:-}"; shift ;;
+    -h|--help)         sed -n '2,30p' "$0"; exit 0 ;;
     *) echo "unknown option: $1" >&2; exit 2 ;;
   esac
   shift
 done
+
+# `VAR=~/x cmd` expands the tilde, but `VAR="~/x"` does not; fix the quoted case
+# rather than storing a path that silently falls back to $HOME at boot.
+case "$ENV_RC_WORKDIR" in "~/"*) ENV_RC_WORKDIR="$HOME/${ENV_RC_WORKDIR#\~/}" ;; esac
 
 ok()   { printf '  \033[32mok\033[0m    %s\n' "$*"; }
 warn() { printf '  \033[33mwarn\033[0m  %s\n' "$*"; }
@@ -45,7 +68,24 @@ act()  { printf '  \033[36m->\033[0m    %s\n' "$*"; }
 head_() { printf '\n\033[1m%s\033[0m\n' "$*"; }
 
 ra_load_env
-[ -n "$NAME_OVERRIDE" ] && TUNNEL_NAME="$NAME_OVERRIDE"
+# Re-apply on top of the stored file so the caller's wishes win for this run.
+[ -n "$ENV_TUNNEL_NAME" ] && TUNNEL_NAME="$ENV_TUNNEL_NAME"
+[ -n "$ENV_RC_WORKDIR" ]  && CLAUDE_RC_WORKDIR="$ENV_RC_WORKDIR"
+[ -n "$ENV_CLAUDE_BIN" ]  && CLAUDE_BIN="$ENV_CLAUDE_BIN"
+[ -n "$ENV_CODE_BIN" ]    && CODE_BIN="$ENV_CODE_BIN"
+
+# Upsert one KEY=value into the stored env file. Paths never contain '|', which
+# is why it is safe as the sed delimiter here.
+ra_env_set() {
+  local key="$1" val="$2"
+  [ -n "$val" ] || return 0
+  mkdir -p "$RA_ENV_DIR"; touch "$RA_ENV_FILE"
+  if grep -q "^${key}=" "$RA_ENV_FILE"; then
+    sed -i "s|^${key}=.*|${key}=${val}|" "$RA_ENV_FILE"
+  else
+    printf '%s=%s\n' "$key" "$val" >> "$RA_ENV_FILE"
+  fi
+}
 
 # ---------------------------------------------------------------- preflight ---
 head_ "preflight  (host $(hostname -s), user $USER)"
@@ -114,6 +154,11 @@ fi
 
 # --------------------------------------------------------------- what to do ---
 head_ "plan"
+act "tunnel name    $(ra_tunnel_name)"
+rc_wd="${CLAUDE_RC_WORKDIR:-}"
+if [ -z "$rc_wd" ]; then rc_wd="$HOME"; [ -d "$HOME/TAPER" ] && rc_wd="$HOME/TAPER"; fi
+act "rc workdir     $rc_wd"
+[ -d "$rc_wd" ] || warn "               ^ does not exist; the launcher will fall back to \$HOME"
 act "symlink ${#SCRIPTS[@]} launchers into $BIN_DIR"
 act "install ${#UNITS[@]} units into $UNIT_DIR"
 [ "$WANT_RC" = 1 ]     && act "enable+start claude-rc      (session: claude-rc)"     || warn "claude-rc      skipped"
@@ -136,10 +181,10 @@ if [ ! -e "$RA_ENV_FILE" ] && [ -e "$RA_ENV_FILE_LEGACY" ]; then
   ok "migrated       $RA_ENV_FILE_LEGACY -> $RA_ENV_FILE"
 fi
 if [ ! -e "$RA_ENV_FILE" ]; then
-  # Default the rc working directory to ~/TAPER when it exists, else $HOME.
-  rc_wd="$HOME"; [ -d "$HOME/TAPER" ] && rc_wd="$HOME/TAPER"
   {
     echo "# Per-host overrides for the remote-access units (not in git)."
+    echo "# Set these on the setup-remote-access.sh command line instead of"
+    echo "# editing here if you prefer, e.g. CLAUDE_RC_WORKDIR=~/foo ./setup-..."
     echo "# TUNNEL_NAME       vscode.dev/tunnel/<name>; <=20 chars of [a-z0-9-]"
     echo "# CLAUDE_RC_WORKDIR directory new claude rc sessions start in"
     echo "# CLAUDE_BIN / CODE_BIN  override binary autodetection"
@@ -150,6 +195,28 @@ if [ ! -e "$RA_ENV_FILE" ]; then
 else
   ok "kept           $RA_ENV_FILE (existing per-host settings)"
 fi
+
+# Persist whatever was given on the command line or in the environment. This is
+# the whole reason the file exists: a systemd user unit does not inherit the
+# invoking shell's environment, so at boot the launcher can only read a file.
+for kv in "TUNNEL_NAME:$ENV_TUNNEL_NAME" "CLAUDE_RC_WORKDIR:$ENV_RC_WORKDIR" \
+          "CLAUDE_BIN:$ENV_CLAUDE_BIN" "CODE_BIN:$ENV_CODE_BIN"; do
+  k=${kv%%:*}; v=${kv#*:}
+  [ -n "$v" ] || continue
+  [ "$k" = TUNNEL_NAME ] && v=$(ra_tunnel_name)
+  old=$(sed -n "s|^${k}=||p" "$RA_ENV_FILE" | head -1)
+  ra_env_set "$k" "$v"
+  ok "set            $k=$v"
+  # The launcher reads the file at ExecStart, so an already-running session keeps
+  # the old value. Say so instead of silently restarting it -- a restart would
+  # drop whatever is connected to that session.
+  if [ "$old" != "$v" ]; then
+    case "$k" in
+      CLAUDE_RC_WORKDIR|CLAUDE_BIN) RESTART_HINT="claude-rc" ;;
+      TUNNEL_NAME|CODE_BIN)         RESTART_HINT="vscode-tunnel" ;;
+    esac
+  fi
+done
 
 # Symlinks, not copies: `git pull` then updates the launchers with no re-run.
 mkdir -p "$BIN_DIR"
@@ -199,5 +266,9 @@ done
 printf '\n  tmux sessions: %s\n' "$(tmux ls 2>/dev/null | cut -d: -f1 | tr '\n' ' ' || echo none)"
 if [ "$WANT_TUNNEL" = 1 ] && [ -n "$CODE" ] && ra_tunnel_logged_in "$CODE"; then
   printf '  tunnel:        https://vscode.dev/tunnel/%s\n' "$(ra_tunnel_name)"
+fi
+if [ -n "${RESTART_HINT:-}" ]; then
+  printf '\n  a setting changed; the running session still uses the old one:\n'
+  printf '                 systemctl --user restart %s\n' "$RESTART_HINT"
 fi
 printf '\n  attach with:   tmux attach -t claude-rc   |   tmux attach -t vscode-tunnel\n\n'

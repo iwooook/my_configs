@@ -30,7 +30,39 @@ git clone https://github.com/iwooook/my_configs.git ~/my_configs
 설치 → `loginctl enable-linger` (로그인 안 해도 부팅 때 뜨게) → enable + start.
 VS Code CLI가 없으면 받아서 `~/.local/bin/code`에 넣는다.
 
-옵션: `--no-tunnel`, `--no-claude-rc`, `--no-download`, `--name <터널이름>`
+옵션: `--no-tunnel`, `--no-claude-rc`, `--no-download`, `--name <터널이름>`,
+`--workdir <경로>`
+
+### 설정 (터널 이름, claude rc 작업 디렉토리)
+
+돌릴 때 환경변수로 주면 된다. 플래그(`--name`, `--workdir`)와 동등하다.
+
+```bash
+CLAUDE_RC_WORKDIR=~/tt-metal TUNNEL_NAME=box1 ~/my_configs/setup-remote-access.sh
+```
+
+주면 `~/.config/my_configs/remote-access.env`에 **저장된다.** systemd user 유닛은
+셸 환경을 물려받지 않으므로, 부팅 때 런처가 읽을 수 있는 곳은 파일뿐이다. 그래서
+환경변수는 입력 수단이고 저장은 파일이다. 나중엔 그 파일을 직접 고쳐도 된다.
+
+우선순위: 커맨드라인 > 환경변수 > 저장된 파일 > 기본값(`~/TAPER` 있으면 그것,
+없으면 `$HOME`).
+
+런처는 ExecStart 때마다 파일을 읽으므로 **이미 떠 있는 세션엔 반영되지 않는다.**
+값이 바뀌면 스크립트가 재시작 명령을 알려준다 (자동으로 재시작하지 않는 이유는
+그 세션에 붙어 있는 작업이 날아가기 때문).
+
+```bash
+systemctl --user restart claude-rc
+```
+
+없는 경로를 줘도 유닛이 죽지 않고 `$HOME`으로 폴백한다 (설치 때 경고는 뜬다).
+
+| 변수 | 뜻 |
+|------|-----|
+| `TUNNEL_NAME` | `vscode.dev/tunnel/<이름>`; 20자 이하 `[a-z0-9-]`로 자동 정규화 |
+| `CLAUDE_RC_WORKDIR` | 원격 세션이 생성될 디렉토리 |
+| `CLAUDE_BIN` / `CODE_BIN` | 바이너리 자동탐색 무시하고 직접 지정 |
 
 ### 새 서버에서 한 번씩 필요한 것
 
@@ -76,9 +108,8 @@ cgroup에 전부 계상된다. 앱 유닛이 서버를 소유하면, 전혀 무�
 부팅 때 세션 존재만 보장한다. 이 루프 덕분에 부팅 시 네트워크가 아직 안 올라온
 상태여도 터널이 그냥 재시도한다.
 
-호스트별 설정(터널 이름, `claude rc` 작업 디렉토리)은 레포가 아니라
-`~/.config/my_configs/remote-access.env`에 들어간다. 그래서 같은 checkout이 모든 서버에서
-그대로 돌아간다.
+호스트별 설정은 레포가 아니라 `~/.config/my_configs/remote-access.env`에 들어간다.
+그래서 같은 checkout이 모든 서버에서 그대로 돌아간다.
 
 ### 파일
 
