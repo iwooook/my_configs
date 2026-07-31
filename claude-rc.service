@@ -1,5 +1,7 @@
 [Unit]
 Description=Claude Code remote-control (claude rc) in a tmux session on the default socket
+Requires=tmux-server.service
+After=tmux-server.service
 
 [Service]
 # Just ensure the session exists on the default tmux socket; the tmux window
@@ -9,9 +11,14 @@ Description=Claude Code remote-control (claude rc) in a tmux session on the defa
 Type=oneshot
 RemainAfterExit=yes
 KillMode=none
-WorkingDirectory=/home/jungwook/TAPER
-ExecStart=/home/jungwook/.local/bin/start-claude-rc.sh
-ExecStop=/usr/bin/tmux kill-session -t claude-rc
+# Without this, an OOM-kill of any process in the cgroup marks the whole unit
+# failed even though the session is fine.
+OOMPolicy=continue
+# No WorkingDirectory= on purpose: it would make the unit fail with a CHDIR
+# error on any host lacking that directory. The session's directory is set by
+# the launcher (CLAUDE_RC_WORKDIR, falling back to $HOME).
+ExecStart=%h/.local/bin/start-claude-rc.sh
+ExecStop=-/bin/sh -c 'tmux kill-session -t claude-rc'
 
 [Install]
 WantedBy=default.target

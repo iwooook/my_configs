@@ -1,0 +1,20 @@
+[Unit]
+Description=VS Code remote tunnel (code tunnel) in a tmux session on the default socket
+Documentation=https://code.visualstudio.com/docs/remote/tunnels
+Requires=tmux-server.service
+After=tmux-server.service
+
+[Service]
+# Only ensure the session exists; the tmux window runs a while-loop that
+# respawns the tunnel, so systemd does not need to track the process.
+# KillMode=none + a targeted ExecStop mean stopping this unit kills only the
+# vscode-tunnel session, never claude-rc or your own tmux sessions.
+Type=oneshot
+RemainAfterExit=yes
+KillMode=none
+OOMPolicy=continue
+ExecStart=%h/.local/bin/start-vscode-tunnel.sh
+ExecStop=-/bin/sh -c 'tmux kill-session -t vscode-tunnel'
+
+[Install]
+WantedBy=default.target

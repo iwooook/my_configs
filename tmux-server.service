@@ -1,0 +1,23 @@
+[Unit]
+Description=Shared tmux server on the default socket, host for the always-on sessions
+Documentation=man:tmux(1)
+
+[Service]
+# The tmux server daemonizes, so systemd cannot track it as a main process; the
+# unit just records "server is up" and stays active. Every session's processes
+# are forked by the server and so are accounted to THIS unit's cgroup, which is
+# the entire point — see the comment in tmux-server-up.sh.
+Type=oneshot
+RemainAfterExit=yes
+# A workload OOM-kill inside any tmux session must not flip this unit to failed.
+OOMPolicy=continue
+ExecStart=%h/.local/bin/tmux-server-up.sh
+# WARNING: stopping or restarting THIS unit tears down the whole tmux server —
+# every session, including your own interactive work. (Leaving ExecStop out would
+# not save you: systemd would SIGKILL the cgroup instead. This is just explicit.)
+# To recycle one app session use `systemctl --user restart claude-rc` etc.; to
+# clear a stale `failed` state use `systemctl --user reset-failed`, not restart.
+ExecStop=-/bin/sh -c 'tmux kill-server'
+
+[Install]
+WantedBy=default.target

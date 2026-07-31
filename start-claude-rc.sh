@@ -1,6 +1,6 @@
 #!/bin/bash
-# Ensure a `claude rc` (remote-control) tmux session exists on the DEFAULT
-# tmux socket, so it shows up in a plain `tmux ls` and can be attached with
+# Ensure a `claude rc` (remote-control) tmux session exists on the DEFAULT tmux
+# socket, so it shows up in a plain `tmux ls` and can be attached with a plain
 # `tmux attach -t claude-rc` — no special socket needed.
 #
 # Crash recovery is handled INSIDE tmux by a while-loop that re-runs claude rc,
@@ -9,8 +9,18 @@
 set -u
 
 SESSION=claude-rc
-WORKDIR=/home/jungwook/TAPER
-CLAUDE=/home/jungwook/.local/bin/claude
+. "$(dirname "$(readlink -f "$0")")/remote-access-common.sh"
+ra_load_env
+
+# Where remote-control sessions start. Fall back to $HOME rather than trusting
+# the configured path, so a missing directory cannot break the unit.
+WORKDIR=${CLAUDE_RC_WORKDIR:-$HOME}
+[ -d "$WORKDIR" ] || WORKDIR="$HOME"
+
+if ! CLAUDE=$(ra_find_claude); then
+  echo "start-claude-rc: no claude binary found; set CLAUDE_BIN in $RA_ENV_FILE" >&2
+  exit 1
+fi
 
 # Idempotent: if the session is already there, do nothing.
 if tmux has-session -t "$SESSION" 2>/dev/null; then
