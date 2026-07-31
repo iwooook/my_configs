@@ -129,7 +129,12 @@ head_ "install"
 
 # Per-host settings stay out of the repo. Only created if absent, so a host's
 # local choices survive a re-run.
-mkdir -p "$HOME/.config"
+mkdir -p "$RA_ENV_DIR"
+# Move a pre-namespacing file into place rather than leaving two sources of truth.
+if [ ! -e "$RA_ENV_FILE" ] && [ -e "$RA_ENV_FILE_LEGACY" ]; then
+  mv "$RA_ENV_FILE_LEGACY" "$RA_ENV_FILE"
+  ok "migrated       $RA_ENV_FILE_LEGACY -> $RA_ENV_FILE"
+fi
 if [ ! -e "$RA_ENV_FILE" ]; then
   # Default the rc working directory to ~/TAPER when it exists, else $HOME.
   rc_wd="$HOME"; [ -d "$HOME/TAPER" ] && rc_wd="$HOME/TAPER"

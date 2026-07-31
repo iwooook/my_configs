@@ -77,7 +77,7 @@ cgroup에 전부 계상된다. 앱 유닛이 서버를 소유하면, 전혀 무�
 상태여도 터널이 그냥 재시도한다.
 
 호스트별 설정(터널 이름, `claude rc` 작업 디렉토리)은 레포가 아니라
-`~/.config/remote-access.env`에 들어간다. 그래서 같은 checkout이 모든 서버에서
+`~/.config/my_configs/remote-access.env`에 들어간다. 그래서 같은 checkout이 모든 서버에서
 그대로 돌아간다.
 
 ### 파일

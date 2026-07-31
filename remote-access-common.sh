@@ -5,12 +5,19 @@
 # place. Not executable on its own.
 
 # Per-host overrides live outside the repo, so the same checkout works verbatim
-# on every machine. Written by setup-remote-access.sh.
-RA_ENV_FILE="$HOME/.config/remote-access.env"
+# on every machine. Written by setup-remote-access.sh. Namespaced under the repo
+# name per XDG convention, so it is obvious what owns it.
+RA_ENV_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/my_configs"
+RA_ENV_FILE="$RA_ENV_DIR/remote-access.env"
+# Pre-namespacing location; still honoured so an older host keeps working until
+# setup-remote-access.sh migrates it.
+RA_ENV_FILE_LEGACY="${XDG_CONFIG_HOME:-$HOME/.config}/remote-access.env"
 
 ra_load_env() {
+  local f="$RA_ENV_FILE"
+  [ -r "$f" ] || f="$RA_ENV_FILE_LEGACY"
   # shellcheck disable=SC1090
-  [ -r "$RA_ENV_FILE" ] && . "$RA_ENV_FILE"
+  [ -r "$f" ] && . "$f"
   return 0
 }
 
