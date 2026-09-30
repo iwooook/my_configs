@@ -1,0 +1,23 @@
+#!/bin/bash
+# $EDITOR for Claude Code's Ctrl+G (and git, etc.) inside tmux → open in the
+# VS Code window you're actually looking at, and block until the tab is closed.
+#
+# Why a script and not `export EDITOR="code --wait"`: inside tmux, a shell's
+# VSCODE_IPC_HOOK_CLI (which VS Code window to talk to) is frozen at the moment
+# that shell started. After VS Code is restarted, or when an old VS Code
+# terminal is still attached to the same tmux session, that socket points at a
+# window you can't see — Ctrl+G opens the file there and `--wait` just hangs.
+#
+# So resolve it at invocation time instead: take the most recently active tmux
+# client (= the VS Code terminal you're typing in) and borrow its socket and
+# remote-cli `code` from /proc/<pid>/environ.
+d=$(tr ':' '\n' <<<"$PATH" | grep remote-cli | head -1)
+c=$(tmux list-clients -F '#{client_activity} #{client_pid}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
+if [ -n "$c" ] && [ -r "/proc/$c/environ" ]; then
+  env=$(tr '\0' '\n' <"/proc/$c/environ")
+  export VSCODE_IPC_HOOK_CLI=$(grep '^VSCODE_IPC_HOOK_CLI=' <<<"$env" | cut -d= -f2-)
+  d=$(grep '^PATH=' <<<"$env" | tr ':' '\n' | grep remote-cli | head -1)
+fi
+# Not under VS Code at all (plain ssh) → fall back to a terminal editor.
+[ -x "$d/code" ] || exec "${CODE_WAIT_FALLBACK:-vi}" "$@"
+exec "$d/code" --wait "$@"

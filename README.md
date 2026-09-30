@@ -122,6 +122,50 @@ cgroup에 전부 계상된다. 앱 유닛이 서버를 소유하면, 전혀 무�
 | `start-vscode-tunnel.sh` | `vscode-tunnel` 세션 |
 | `*.service` | systemd user 유닛 3개 |
 
+## Claude Code Ctrl+G → VS Code (tmux 안에서)
+
+tmux 안에서 돌리는 `claude`에서 Ctrl+G(프롬프트를 외부 에디터로 편집)를 누르면
+**지금 보고 있는 VS Code 창**에 탭이 뜨고, 탭을 닫으면 내용이 프롬프트로 돌아온다.
+
+### 설치
+
+```bash
+ln -sf ~/my_configs/code-wait ~/.local/bin/code-wait
+echo 'export EDITOR=~/.local/bin/code-wait' >> ~/.bashrc
+```
+
+그다음 **새 tmux pane**에서 `claude`를 다시 띄운다 (이미 떠 있는 프로세스는 옛
+`EDITOR`를 들고 있음). 이후엔 VS Code를 껐다 켜도 다시 할 것 없다.
+
+### 왜 `EDITOR="code --wait"`로는 안 되나
+
+- `code`가 어느 VS Code 창에 붙을지는 `VSCODE_IPC_HOOK_CLI`(소켓 경로)로 정해진다.
+- tmux 안의 셸은 이 값을 **셸이 시작될 때** 물려받고 끝까지 고정이다.
+- 그래서 다음 경우에 옛 소켓을 쥐게 된다.
+  - VS Code를 재시작/재접속함 → 새 창은 새 소켓, 기존 pane은 옛 소켓
+  - 옛 VS Code 터미널이 같은 tmux 세션에 아직 attach돼 있음 → "첫 번째 클라이언트"가 죽은 창
+- 옛 소켓도 연결은 되므로 에러가 안 난다. 안 보이는 창에 파일이 열리고
+  `--wait`가 멈춰서 **Ctrl+G가 그냥 안 먹는 것처럼** 보인다.
+
+### 동작 방식 (`code-wait`)
+
+1. Ctrl+G를 **누르는 순간** `tmux list-clients`에서 `client_activity`가 가장 최근인
+   클라이언트(= 지금 타이핑 중인 VS Code 터미널)를 고른다.
+2. 그 프로세스의 `/proc/<pid>/environ`에서 `VSCODE_IPC_HOOK_CLI`와 remote-cli `code`
+   경로를 가져온다.
+3. `code --wait "$@"`로 연다.
+
+- tmux 밖(VS Code 터미널 직접)에서도 자기 환경값 그대로 동작한다.
+- VS Code 없이 ssh로만 붙은 경우엔 `vi`로 폴백 (`CODE_WAIT_FALLBACK=nano` 등으로 변경).
+
+### 안 될 때 확인
+
+```bash
+echo $EDITOR                                   # ~/.local/bin/code-wait 여야 함
+tmux list-clients -F '#{client_tty} #{t:client_activity}'   # 죽은 클라이언트가 최신이면 문제
+tmux detach-client -t /dev/pts/N               # 안 쓰는 클라이언트 떼기
+```
+
 ## 그 외 dotfile
 
 `setup-remote-access.sh`와 무관하게, 필요하면 직접 복사해서 쓴다.
@@ -131,3 +175,4 @@ cgroup에 전부 계상된다. 앱 유닛이 서버를 소유하면, 전혀 무�
   vim에서 `:PluginInstall`
 - `.tmux.conf` — Ctrl+←/→ 단어 이동 포함
 - `logid.cfg` — Logitech M590 (logiops)
+- `code-wait` — Claude Code Ctrl+G용 `$EDITOR` (위 섹션 참고)
