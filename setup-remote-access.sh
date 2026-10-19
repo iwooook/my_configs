@@ -1,4 +1,7 @@
 #!/bin/bash
+# DEPRECATED (2026-10-19): no longer used -- Claude Code runs in an ssh terminal
+# and VS Code over Remote-SSH instead. See README.md for how to remove it.
+#
 # Set up always-on remote access on this machine, in two attachable tmux
 # sessions on the default socket, both auto-started at boot by systemd --user:
 #
@@ -26,6 +29,8 @@
 # Safe to re-run: every step is idempotent, and it never restarts anything that
 # would drop a live tmux session.
 set -uo pipefail
+
+echo "WARNING: setup-remote-access.sh is DEPRECATED (2026-10-19); see README.md." >&2
 
 REPO_DIR=$(cd "$(dirname "$(readlink -f "$0")")" && pwd)
 . "$REPO_DIR/remote-access-common.sh"
