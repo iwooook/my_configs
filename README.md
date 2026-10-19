@@ -168,13 +168,17 @@ echo 'export EDITOR=~/.local/bin/code-wait' >> ~/.bashrc
 ### 동작 방식 (`code-wait`)
 
 1. Ctrl+G를 **누르는 순간** `tmux list-clients`에서 `client_activity`가 가장 최근인
-   client(= 지금 타이핑 중인 VS Code 터미널)를 고른다.
+   client(= 지금 타이핑 중인 터미널)를 고른다.
 2. 그 프로세스의 `/proc/<pid>/environ`에서 `VSCODE_IPC_HOOK_CLI`와 remote-cli `code`
-   경로를 가져온다.
-3. `code --wait "$@"`로 연다.
+   경로를 가져온다. tmux 안에서는 셸 자신의 값은 낡았을 수 있어서 쓰지 않는다.
+3. 소켓이 살아 있으면 `code --wait "$@"`로 연다.
 
 - tmux 밖(VS Code 터미널 직접)에서도 자기 환경값 그대로 동작한다.
-- VS Code 없이 ssh로만 붙은 경우엔 `vi`로 fallback 한다 (`CODE_WAIT_FALLBACK=nano` 등으로 변경).
+- 다음 경우엔 `vim`으로 fallback 한다 (`CODE_WAIT_FALLBACK=nano` 등으로 변경).
+  - 가장 최근 client가 VS Code 터미널이 아님 (그냥 ssh 터미널)
+  - 소켓이 없거나, `code --wait`가 3초 안에 실패함 (죽은 소켓)
+- Claude는 에디터 이름에 `code`가 들어 있으면 VS Code로 보고 `-g 파일:줄`로 부른다.
+  fallback 할 때는 이걸 `+줄 파일`로 바꿔서 넘긴다.
 
 ### 안 될 때 확인
 

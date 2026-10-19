@@ -9,15 +9,33 @@
 # window you can't see — Ctrl+G opens the file there and `--wait` just hangs.
 #
 # So resolve it at invocation time instead: take the most recently active tmux
-# client (= the VS Code terminal you're typing in) and borrow its socket and
-# remote-cli `code` from /proc/<pid>/environ.
+# client (= the terminal you're typing in) and borrow its socket and remote-cli
+# `code` from /proc/<pid>/environ. If that client isn't a VS Code terminal
+# (plain ssh), fall back to a terminal editor.
+hook=$VSCODE_IPC_HOOK_CLI
 d=$(tr ':' '\n' <<<"$PATH" | grep remote-cli | head -1)
-c=$(tmux list-clients -F '#{client_activity} #{client_pid}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
-if [ -n "$c" ] && [ -r "/proc/$c/environ" ]; then
-  env=$(tr '\0' '\n' <"/proc/$c/environ")
-  export VSCODE_IPC_HOOK_CLI=$(grep '^VSCODE_IPC_HOOK_CLI=' <<<"$env" | cut -d= -f2-)
-  d=$(grep '^PATH=' <<<"$env" | tr ':' '\n' | grep remote-cli | head -1)
+if [ -n "$TMUX" ]; then
+  # This shell's (and the tmux server's) env may be stale; trust only the active client's.
+  hook= d=
+  c=$(tmux list-clients -F '#{client_activity} #{client_pid}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
+  if [ -n "$c" ] && [ -r "/proc/$c/environ" ]; then
+    env=$(tr '\0' '\n' <"/proc/$c/environ")
+    hook=$(grep '^VSCODE_IPC_HOOK_CLI=' <<<"$env" | cut -d= -f2-)
+    d=$(grep '^PATH=' <<<"$env" | cut -d= -f2- | tr ':' '\n' | grep remote-cli | head -1)
+  fi
 fi
-# Not under VS Code at all (plain ssh) → fall back to a terminal editor.
-[ -x "$d/code" ] || exec "${CODE_WAIT_FALLBACK:-vi}" "$@"
-exec "$d/code" --wait "$@"
+if [ -S "$hook" ] && [ -x "$d/code" ]; then
+  export VSCODE_IPC_HOOK_CLI=$hook
+  start=$SECONDS
+  "$d/code" --wait "$@" && exit 0
+  # Only a dead socket fails right away; that case falls through to the terminal editor.
+  (( SECONDS - start >= 3 )) && exit 1
+fi
+ed=${CODE_WAIT_FALLBACK:-vim}
+# Claude sees "code" in the editor name, assumes VS Code and passes `-g file:line`;
+# rewrite that as `+line file` for the terminal editor.
+if [ "$1" = -g ] && { [[ $2 =~ ^(.+):([0-9]+):[0-9]+$ ]] || [[ $2 =~ ^(.+):([0-9]+)$ ]]; }; then
+  exec "$ed" "+${BASH_REMATCH[2]}" "${BASH_REMATCH[1]}" "${@:3}"
+fi
+[ "$1" = -g ] && shift
+exec "$ed" "$@"
