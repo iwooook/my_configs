@@ -6,19 +6,37 @@ _cw=~/.local/bin/code-wait
 _cw_src=$(cat <<'EOF'
 #!/bin/bash
 # (~/.bashrc가 생성하는 파일. 고치려면 ~/.bashrc의 Ctrl+G 블록을 고칠 것)
+# 소켓 파일은 VS Code 창이 닫혀도 남으므로 지금 listen 중인지까지 본다
+live() { [ -S "$1" ] && { ! command -v ss >/dev/null || ss -xl | grep -qF " $1 "; }; }
+# 가장 최근 활동한 tmux client(= 지금 타이핑 중인 터미널)의 env를 따른다. client가 없으면 1
+from_tmux() {
+  local c env
+  hook= d=
+  c=$(tmux list-clients -F '#{client_activity} #{client_pid}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
+  [ -n "$c" ] && [ -r "/proc/$c/environ" ] || return 1
+  env=$(tr '\0' '\n' <"/proc/$c/environ")
+  hook=$(grep '^VSCODE_IPC_HOOK_CLI=' <<<"$env" | cut -d= -f2-)
+  d=$(grep '^PATH=' <<<"$env" | cut -d= -f2- | tr ':' '\n' | grep remote-cli | head -1)
+  return 0
+}
 hook=$VSCODE_IPC_HOOK_CLI
 d=$(tr ':' '\n' <<<"$PATH" | grep remote-cli | head -1)
 if [ -n "$TMUX" ]; then
-  # 이 셸(과 tmux 서버)의 env는 낡았을 수 있으니 가장 최근 활동한 클라이언트의 env만 따른다
-  hook= d=
-  c=$(tmux list-clients -F '#{client_activity} #{client_pid}' 2>/dev/null | sort -rn | head -1 | cut -d' ' -f2)
-  if [ -n "$c" ] && [ -r "/proc/$c/environ" ]; then
-    env=$(tr '\0' '\n' <"/proc/$c/environ")
-    hook=$(grep '^VSCODE_IPC_HOOK_CLI=' <<<"$env" | cut -d= -f2-)
-    d=$(grep '^PATH=' <<<"$env" | cut -d= -f2- | tr ':' '\n' | grep remote-cli | head -1)
+  # 이 셸(과 tmux 서버)의 env는 낡았을 수 있으니 tmux client의 env만 따른다
+  from_tmux
+elif ! live "$hook"; then
+  # 백그라운드 세션(claude daemon이 띄움)은 daemon이 뜰 때의 env를 물려받아 소켓이 죽어 있기 쉽다
+  # → tmux client를 따르고, tmux client가 아예 없으면 살아 있는 VS Code 창 중 가장 최근 것
+  if ! from_tmux; then
+    for s in $(ls -t "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"/vscode-ipc-*.sock 2>/dev/null); do
+      pid=$(ss -xlp 2>/dev/null | grep -F " $s " | grep -o 'pid=[0-9]*' | head -1 | cut -d= -f2)
+      [ -n "$pid" ] || continue
+      hook=$s d=$(dirname "$(readlink "/proc/$pid/exe")")/bin/remote-cli
+      break
+    done
   fi
 fi
-if [ -S "$hook" ] && [ -x "$d/code" ]; then
+if live "$hook" && [ -x "$d/code" ]; then
   export VSCODE_IPC_HOOK_CLI=$hook
   start=$SECONDS
   "$d/code" --wait "$@" && exit 0

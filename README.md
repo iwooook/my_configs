@@ -67,9 +67,12 @@ cat ~/my_configs/ctrl-g.bashrc >> ~/.bashrc
    client(= 지금 타이핑 중인 터미널)를 고른다.
 2. 그 프로세스의 `/proc/<pid>/environ`에서 `VSCODE_IPC_HOOK_CLI`와 remote-cli `code`
    경로를 가져온다. tmux 안에서는 셸 자신의 값은 낡았을 수 있어서 쓰지 않는다.
-3. 소켓이 살아 있으면 `code --wait "$@"`로 연다.
+3. 소켓이 살아 있으면(`ss -xl`에서 listen 중) `code --wait "$@"`로 연다.
 
 - tmux 밖(VS Code 터미널 직접)에서도 자기 환경값 그대로 동작한다.
+- **백그라운드 세션**(`claude --bg`, `/jobs`)은 Ctrl+G를 claude daemon 안에서 처리하고, daemon이
+  뜰 때의 env(옛 소켓)를 들고 있다. 그래서 자기 소켓이 죽었으면 tmux client를 따르고, tmux client가
+  아예 없으면 살아 있는 VS Code 창 중 가장 최근 것을 쓴다.
 - 다음 경우엔 `vim`으로 fallback 한다 (`CODE_WAIT_FALLBACK=nano` 등으로 변경).
   - 가장 최근 client가 VS Code 터미널이 아님 (그냥 ssh 터미널)
   - 소켓이 없거나, `code --wait`가 3초 안에 실패함 (죽은 소켓)
