@@ -8,7 +8,7 @@ git clone https://github.com/iwooook/my_configs.git ~/my_configs
 
 | 구성 | 대상 | 하는 일 | 진입점 |
 |------|------|---------|--------|
-| [Ctrl+G → VS Code](#claude-code-ctrlg--vs-code-tmux-안에서) | Linux 서버 (tmux) | Claude Code의 Ctrl+G가 **지금 보고 있는** VS Code 창에 열리게 | `ctrl-g.bashrc` |
+| [Ctrl+G → VS Code](#claude-code-ctrlg--vs-code-tmux-안에서) | Linux 서버 (tmux) | Claude Code의 Ctrl+G가 **지금 보고 있는** VS Code 창에 열리게, 쓰는 동안 tmux엔 세션 화면 | `ctrl-g.bashrc` |
 | [AutoVPN](#autovpn-windows) | Windows PC | moreh VPN을 scheduled task로 자동 연결·자동 복구 | `autovpn\install.ps1` |
 | [dotfiles](#dotfiles) | 어디든 | `.vimrc`, `.tmux.conf`, `logid.cfg` | 직접 복사 |
 | ~~[원격 접속 상시화](#deprecated-원격-접속-상시화-claude-rc--vs-code-tunnel)~~ | Linux 서버 | **deprecated.** `claude rc` + VS Code tunnel 상시 실행 | `setup-remote-access.sh` |
@@ -33,6 +33,7 @@ symlink가 `~/my_configs/<파일>`을 가리키고 있어서, 옮기거나 지�
 
 tmux 안에서 돌리는 `claude`에서 Ctrl+G(프롬프트를 외부 에디터로 편집)를 누르면
 **지금 보고 있는 VS Code 창**에 탭이 뜨고, 탭을 닫으면 내용이 프롬프트로 돌아온다.
+탭에 쓰는 동안 tmux에는 그 세션이 보기 전용으로 떠 있어 PgUp/PgDn으로 위 내용을 볼 수 있다.
 
 ### 설치
 
@@ -68,6 +69,14 @@ cat ~/my_configs/ctrl-g.bashrc >> ~/.bashrc
 2. 그 프로세스의 `/proc/<pid>/environ`에서 `VSCODE_IPC_HOOK_CLI`와 remote-cli `code`
    경로를 가져온다. tmux 안에서는 셸 자신의 값은 낡았을 수 있어서 쓰지 않는다.
 3. 소켓이 살아 있으면(`ss -xl`에서 listen 중) `code --wait "$@"`로 연다.
+4. 탭을 닫을 때까지 Claude는 멈춰 있어 화면을 다시 그리지도, 키를 받지도 못한다. 그래서 그동안 tmux 쪽을 이렇게 둔다.
+   - **보기 전용 화면:** 그 세션을 fork해서 tmux popup에 띄운다. Claude Code가 직접 그리므로 화면이 똑같고
+     PgUp/PgDn도 된다. popup에서 Enter를 쳐도 메시지는 나가지 않는다.
+     - 세션은 부모 pid(= Claude)로 `~/.claude/sessions/<pid>.json`에서 찾는다
+     - `claude --resume <id> --fork-session --session-id <새 id> --strict-mcp-config`, `ANTHROPIC_BASE_URL`은 닫힌 포트
+   - **창 크기 고정:** 탭이 열리며 VS Code 터미널이 줄면 세션 창(`claude agents`에서 연 백그라운드 세션)이
+     검게 남는다. 그래서 tmux 창 크기를 고정한다 (`resize-window` → `window-size manual`, 줄어든 만큼은 잘려 보임).
+   - 탭을 닫으면 popup을 닫고, 창 크기를 되돌리고, fork가 남긴 파일(`~/.claude/**/<새 id>*`)을 3초 뒤 지운다.
 
 - tmux 밖(VS Code 터미널 직접)에서도 자기 환경값 그대로 동작한다.
 - **백그라운드 세션**(`claude --bg`, `/jobs`)은 Ctrl+G를 claude daemon 안에서 처리하고, daemon이
