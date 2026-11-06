@@ -19,6 +19,7 @@ SHOWS = CFG["shows"]
 THRESHOLD = CFG.get("threshold", 2)       # 같은 등급 잔여석이 이 수 이상이면 알림
 INTERVAL = CFG.get("interval", 180)       # 확인 주기(초), 매번 ±30초 랜덤
 TITLE = CFG.get("title", f"잔여석 {THRESHOLD}석 이상 알림")
+DESKTOP = CFG.get("desktop")              # Edge 창을 보낼 가상 데스크톱 번호 (Alt+Tab에서 숨김)
 UNTIL = (datetime.datetime.strptime(CFG["until"], "%Y-%m-%d %H:%M")  # 이 시각이 지나면 종료
          if CFG.get("until") else None)
 LOG = HERE / "watch.log"
@@ -79,6 +80,17 @@ def notify(title, body, url, priority=5):
     slack(f"*{title}*\n{body}\n{url}")
 
 
+def hide_window():
+    if not DESKTOP:
+        return
+    try:
+        from vdesk import move_edge_to_desktop
+        if move_edge_to_desktop(DESKTOP):
+            log(f"Edge 창을 데스크톱 {DESKTOP}으로 이동")
+    except Exception as e:
+        log(f"데스크톱 이동 실패 (감시는 계속): {e}")
+
+
 def read_seats(page, url):
     page.goto(url, wait_until="domcontentloaded", timeout=60000)
     page.wait_for_selector("text=/^R석\\s*\\d+$/", timeout=30000)
@@ -101,6 +113,7 @@ def main():
         browser = p.chromium.launch(channel="msedge", headless=False,
                                     args=["--window-position=-32000,-32000"])
         page = browser.new_page(viewport={"width": 1400, "height": 1000})
+        hide_window()
         log(f"감시 시작: {', '.join(SHOWS)} / 기준 {THRESHOLD}석 / 주기 약 {INTERVAL}s"
             + (f" / {UNTIL:%m-%d %H:%M}까지" if UNTIL else ""))
         while True:
@@ -130,6 +143,7 @@ def main():
                     log(f"{name}: 확인 실패 ({fails}회 연속) - {str(e).splitlines()[0]}")
                     if fails == 6:
                         notify(f"⚠ {TITLE} 감시 오류", "연속으로 확인에 실패하고 있습니다. watch.log를 확인하세요.", url, 3)
+            hide_window()   # 사용자가 창을 끌고 왔거나 Edge가 창을 새로 만든 경우 대비
             time.sleep(INTERVAL + random.randint(-30, 30))
 
 

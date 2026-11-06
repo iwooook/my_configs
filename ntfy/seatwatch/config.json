@@ -7,6 +7,7 @@
   "until": "2026-12-17 18:30",
   "threshold": 2,
   "interval": 180,
+  "desktop": 3,
   "ntfy_topic": "",
   "slack_webhook": ""
 }

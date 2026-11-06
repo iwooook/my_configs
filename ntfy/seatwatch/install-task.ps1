@@ -8,13 +8,13 @@ $here = $PSScriptRoot
 $taskName = 'SeatWatch'
 $cfg = Get-Content -Raw -Encoding UTF8 (Join-Path $here 'config.json') | ConvertFrom-Json
 
-# venv + playwright (browser = installed Edge, so no 'playwright install' needed)
+# venv + playwright + pyvda (virtual desktop). Browser = installed Edge, so no 'playwright install' needed.
 $py = Join-Path $here '.venv\Scripts\python.exe'
 if (-not (Test-Path $py)) {
-    Write-Host 'Creating venv + installing playwright...'
+    Write-Host 'Creating venv...'
     python -m venv (Join-Path $here '.venv')
-    & $py -m pip install -q playwright
 }
+& $py -m pip install -q --disable-pip-version-check playwright pyvda
 $pyw = Join-Path $here '.venv\Scripts\pythonw.exe'
 
 $action = New-ScheduledTaskAction -Execute $pyw -Argument ('"' + (Join-Path $here 'watch.py') + '"') -WorkingDirectory $here

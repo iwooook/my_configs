@@ -131,6 +131,7 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-task.ps1   # 중지 + task 
 | `until` | `YYYY-MM-DD HH:MM`. 이 시각에 감시 종료 + task trigger 만료. 예매 마감(보통 공연 1시간 전)으로 둔다 |
 | `threshold` | 한 등급 잔여석이 이 수 이상이면 알림 (기본 2) |
 | `interval` | 확인 주기 초 (기본 180, 매번 ±30초) |
+| `desktop` | 감시용 Edge 창을 보낼 가상 데스크톱 번호 (기본 예시 3). Alt+Tab·작업 표시줄에서 안 보이게. 없으면 마지막 데스크톱. 빼면 안 옮김 |
 | `ntfy_topic` | 비워 둔다 (커밋됨). 비면 `ntfy_notify.py` 규칙대로 로컬 파일에서 찾음 |
 | `slack_webhook` | (선택) Slack Incoming Webhook URL. 넣었으면 커밋하지 말 것 |
 
@@ -159,4 +160,8 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-task.ps1   # 중지 + task 
 - 2석이 **연석인지는 모른다.** 배치도는 로그인 후 예매창에서만 보이고, 거기 자동 진입은
   보안문자·매크로 감지·계정 제한 위험이 있어서 안 한다. 알림 받고 배치도는 직접 본다.
 - 같은 상태로는 한 번만 알리고, 잔여석 수가 바뀌면 다시 알린다. 6회 연속 실패하면 오류 알림.
+- 화면 밖에 띄운 창도 Alt+Tab엔 보여서, 시작할 때와 매 주기마다 `vdesk.py`(pyvda)로 `desktop`번 가상 데스크톱에 보낸다.
+  Playwright 임시 프로필(`playwright_chromiumdev_profile-*`)로 뜬 Edge만 옮기고 평소 Edge는 안 건드린다.
+  가상 데스크톱 API는 비공개 COM이라 Windows 업데이트 후 깨질 수 있는데, 실패해도 로그만 남기고 감시는 계속한다.
+  설정 > 멀티태스킹 > 데스크톱의 Alt+Tab 옵션이 "모든 데스크톱"이면 여전히 보인다 (기본값은 "사용 중인 데스크톱만").
 - Windows toast는 WinRT라서 pwsh 7이 아니라 `powershell.exe`(5.1)로 띄운다.
