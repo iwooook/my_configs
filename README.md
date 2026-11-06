@@ -10,6 +10,7 @@ git clone https://github.com/iwooook/my_configs.git ~/my_configs
 |------|------|---------|--------|
 | [Ctrl+G → VS Code](#claude-code-ctrlg--vs-code-tmux-안에서) | Linux 서버 (tmux) | Claude Code의 Ctrl+G가 **지금 보고 있는** VS Code 창에 열리게, 쓰는 동안 tmux엔 세션 화면 | `ctrl-g.bashrc` |
 | [AutoVPN](#autovpn-windows) | Windows PC | moreh VPN을 scheduled task로 자동 연결·자동 복구 | `autovpn\install.ps1` |
+| [ntfy 폰 알림](#ntfy-폰-알림) | 어디든 | 한 줄로 폰 푸시. Claude Code hook, 티켓 잔여석 감시(`seatwatch`) 예시 | `ntfy/` |
 | [dotfiles](#dotfiles) | 어디든 | `.vimrc`, `.tmux.conf`, `logid.cfg` | 직접 복사 |
 | ~~[원격 접속 상시화](#deprecated-원격-접속-상시화-claude-rc--vs-code-tunnel)~~ | Linux 서버 | **deprecated.** `claude rc` + VS Code tunnel 상시 실행 | `setup-remote-access.sh` |
 
@@ -17,6 +18,8 @@ git clone https://github.com/iwooook/my_configs.git ~/my_configs
 my_configs/
 ├── ctrl-g.bashrc               Ctrl+G용 ~/.bashrc 블록
 ├── autovpn/                    Windows VPN 자동 연결 (자세한 문서: autovpn/README.md)
+├── ntfy/                       ntfy 폰 알림 helper + 예시 (자세한 문서: ntfy/README.md)
+│   └── seatwatch/              NOL 티켓 잔여석 감시 → Windows/ntfy 알림 (scheduled task)
 ├── .vimrc  .tmux.conf  logid.cfg
 └── (deprecated) 원격 접속 상시화
     ├── setup-remote-access.sh  remote-access-common.sh
@@ -154,6 +157,14 @@ powershell -ExecutionPolicy Bypass -File .\uninstall.ps1                # 제거
 
 정상이면 로그에 `heartbeat: tunnel healthy (Nm up, probe ok)`가 ~5분마다 찍힌다.
 끊겼을 땐 `session ended after Ns -- cause: XXX` 줄의 분류를 보면 원인이 나온다.
+
+---
+
+## ntfy 폰 알림
+
+`curl -d "끝남" ntfy.sh/<topic>` 한 줄로 폰에 푸시가 온다. topic은 public 레포라 커밋하지 않고
+머신마다 `~/.config/my_configs/ntfy-topic`에 둔다. curl/JSON/PowerShell/Python 사용법,
+Claude Code hook, 티켓 잔여석 감시(`seatwatch/`)는 [ntfy/README.md](ntfy/README.md).
 
 ---
 

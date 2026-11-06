@@ -1,0 +1,12 @@
+{
+  "title": "서울시향 2석 이상 알림",
+  "shows": {
+    "환희의 송가 ①": "https://nol.yanolja.com/ticket/products/25013840",
+    "환희의 송가 ②": "https://nol.yanolja.com/ticket/products/25013841"
+  },
+  "until": "2026-12-17 18:30",
+  "threshold": 2,
+  "interval": 180,
+  "ntfy_topic": "",
+  "slack_webhook": ""
+}
