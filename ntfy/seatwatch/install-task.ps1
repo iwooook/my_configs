@@ -43,3 +43,14 @@ try {
 }
 Start-ScheduledTask -TaskName $taskName
 Write-Host "Registered and started task '$taskName'. Log: $(Join-Path $here 'watch.log')"
+
+# Daily health report to ntfy at 10:00 (runs late if the PC was off/asleep at 10:00).
+$healthName = 'SeatWatch-Health'
+$hAction = New-ScheduledTaskAction -Execute $pyw -Argument ('"' + (Join-Path $here 'health.py') + '"') -WorkingDirectory $here
+$hTrigger = New-ScheduledTaskTrigger -Daily -At '10:00'
+if ($cfg.until) { $hTrigger.EndBoundary = $end }
+$hSettings = New-ScheduledTaskSettingsSet -MultipleInstances IgnoreNew -ExecutionTimeLimit (New-TimeSpan -Minutes 5) `
+    -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+Register-ScheduledTask -TaskName $healthName -Action $hAction -Trigger $hTrigger -Settings $hSettings `
+    -Principal $principal -Description 'Daily seatwatch health report via ntfy' -Force | Out-Null
+Write-Host "Registered task '$healthName' (daily 10:00 ntfy report)."

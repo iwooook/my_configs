@@ -140,8 +140,12 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-task.ps1   # 중지 + task 
 |---------|---------|
 | 로그온 | 로그인하면 바로 시작 |
 | 10분마다 반복 | 죽어 있으면 다시 시작 (재부팅·절전 해제·크래시 복구). `MultipleInstances=IgnoreNew`라 돌고 있으면 무시 |
+| `SeatWatch-Health` task, 매일 10:00 | `health.py`: 상태 리포트를 ntfy로 보냄. 그 시각에 PC가 꺼져 있었으면 켜진 뒤 바로 |
 
-- 두 trigger 모두 `EndBoundary = until`. `watch.py`도 `until`이 지나면 스스로 끝난다.
+- 일일 리포트 내용: task 상태, 프로세스 수, 마지막 확인 시각, 최근 24시간 확인/실패 횟수, 공연별 최신 잔여석, 종료까지 남은 일수.
+  task가 Running이 아니거나, 프로세스가 없거나, 마지막 확인이 15분보다 오래됐으면 `⚠ … 감시 이상`(priority high)으로 온다.
+  수동 실행: `.venv\Scripts\python health.py`
+- 모든 trigger가 `EndBoundary = until`. `watch.py`도 `until`이 지나면 스스로 끝난다.
 - `LogonType=Interactive`: Edge 창과 toast를 띄워야 해서 **로그인돼 있을 때만** 돈다.
   재부팅 후엔 로그인해야 시작된다. 관리자 권한은 필요 없다.
 - `ExecutionTimeLimit=0`, `DontStopOnIdleEnd`, 배터리 조건 끔. 기본값이면 3일 뒤나 idle 해제 때 스케줄러가 죽인다.

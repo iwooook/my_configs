@@ -52,7 +52,8 @@ $x.LoadXml(@'
 $app = '{{1AC14E77-02E7-4E5D-B744-2EB1AE5198B7}}\\WindowsPowerShell\\v1.0\\powershell.exe'
 [Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))
 """
-    subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True)
+    subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps], capture_output=True,
+                   creationflags=0x08000000)  # CREATE_NO_WINDOW: pythonw에서 콘솔 창 안 뜨게
 
 
 def slack(text):
