@@ -17,6 +17,7 @@ from ntfy_notify import notify as ntfy_send  # noqa: E402
 CFG = json.loads((HERE / "config.json").read_text(encoding="utf-8"))
 SHOWS = CFG["shows"]
 THRESHOLD = CFG.get("threshold", 2)       # 같은 등급 잔여석이 이 수 이상이면 알림
+GRADES = set(CFG.get("grades") or [])     # 알림 대상 등급 (예: ["R석", "S석"]). 비면 전 등급
 INTERVAL = CFG.get("interval", 180)       # 확인 주기(초), 매번 ±30초 랜덤
 TITLE = CFG.get("title", f"잔여석 {THRESHOLD}석 이상 알림")
 DESKTOP = CFG.get("desktop")              # Edge 창을 보낼 가상 데스크톱 번호 (Alt+Tab에서 숨김)
@@ -114,7 +115,8 @@ def main():
                                     args=["--window-position=-32000,-32000"])
         page = browser.new_page(viewport={"width": 1400, "height": 1000})
         hide_window()
-        log(f"감시 시작: {', '.join(SHOWS)} / 기준 {THRESHOLD}석 / 주기 약 {INTERVAL}s"
+        log(f"감시 시작: {', '.join(SHOWS)} / {'·'.join(sorted(GRADES)) or '전 등급'} {THRESHOLD}석 이상"
+            f" / 주기 약 {INTERVAL}s"
             + (f" / {UNTIL:%m-%d %H:%M}까지" if UNTIL else ""))
         while True:
             if UNTIL and datetime.datetime.now() >= UNTIL:
@@ -128,7 +130,8 @@ def main():
                     fails = 0
                     summary = " | ".join(f"{t} " + " ".join(f"{g}{n}" for g, n in s.items())
                                          for t, s in seats.items())
-                    hits = {t: {g: n for g, n in s.items() if n >= THRESHOLD} for t, s in seats.items()}
+                    hits = {t: {g: n for g, n in s.items() if n >= THRESHOLD and (not GRADES or g in GRADES)}
+                            for t, s in seats.items()}
                     hits = {t: h for t, h in hits.items() if h}
                     log(f"{name}: {summary}" + ("  <-- 알림!" if hits else ""))
                     key = str(hits)

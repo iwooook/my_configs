@@ -1,10 +1,13 @@
 {
-  "title": "서울시향 2석 이상 알림",
+  "title": "서울시향 12/18 R·S석 2석 이상 알림",
   "shows": {
-    "환희의 송가 ①": "https://nol.yanolja.com/ticket/products/25013840",
-    "환희의 송가 ②": "https://nol.yanolja.com/ticket/products/25013841"
+    "환희의 송가 ② (12/18 금)": "https://nol.yanolja.com/ticket/products/25013841"
   },
-  "until": "2026-12-17 18:30",
+  "until": "2026-12-18 18:30",
+  "grades": [
+    "R석",
+    "S석"
+  ],
   "threshold": 2,
   "interval": 180,
   "desktop": 3,

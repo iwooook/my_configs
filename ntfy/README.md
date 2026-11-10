@@ -126,10 +126,11 @@ powershell -ExecutionPolicy Bypass -File .\uninstall-task.ps1   # 중지 + task 
 
 | config 키 | 뜻 |
 |-----------|-----|
-| `title` | 알림 제목 (예: `서울시향 2석 이상 알림`) |
+| `title` | 알림 제목 (예: `서울시향 12/18 R·S석 2석 이상 알림`) |
 | `shows` | `{"표시 이름": "https://nol.yanolja.com/ticket/products/<id>"}` |
 | `until` | `YYYY-MM-DD HH:MM`. 이 시각에 감시 종료 + task trigger 만료. 예매 마감(보통 공연 1시간 전)으로 둔다 |
 | `threshold` | 한 등급 잔여석이 이 수 이상이면 알림 (기본 2) |
+| `grades` | 알림 대상 등급 목록 (예: `["R석", "S석"]`). 비우거나 빼면 전 등급. 로그엔 전 등급이 다 찍힌다 |
 | `interval` | 확인 주기 초 (기본 180, 매번 ±30초) |
 | `desktop` | 감시용 Edge 창을 보낼 가상 데스크톱 번호 (기본 예시 3). Alt+Tab·작업 표시줄에서 안 보이게. 없으면 마지막 데스크톱. 빼면 안 옮김 |
 | `ntfy_topic` | 비워 둔다 (커밋됨). 비면 `ntfy_notify.py` 규칙대로 로컬 파일에서 찾음 |
